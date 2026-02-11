@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config THK
+	tristate "THK - LLM Command Assistant"
+	depends on SYSFS
+	select AUDIT if THK_AUDIT
+	help
+	  This module provides kernel-side support for the THK LLM Command
+	  Assistant. It creates a /dev/thk character device that validates
+	  commands against a blocklist, enforces rate limits per UID, and
+	  logs all command executions to the kernel audit subsystem.
+
+	  The userspace daemon (thkd) handles LLM inference while this
+	  module provides immutable audit logging and security enforcement.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called thk.
+
+	  If unsure, say N.
+
+config THK_AUDIT
+	bool "THK audit logging support"
+	depends on THK
+	default y
+	help
+	  Enable audit logging for all commands validated through /dev/thk.
+	  Each validation request is logged via the kernel audit subsystem,
+	  providing an immutable record of all THK command activity.
+
+	  If unsure, say Y.

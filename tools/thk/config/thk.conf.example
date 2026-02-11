@@ -1,0 +1,44 @@
+# THK - LLM Command Assistant Configuration
+#
+# This file is read by the thkd daemon on startup.
+# Default location: /etc/thk/thk.conf
+#
+# Syntax: key=value (one per line, # for comments)
+
+# LLM Backend
+# Options: ollama, openai, anthropic, llamacpp, custom
+backend=ollama
+
+# API endpoint URL
+# Ollama:    http://localhost:11434
+# OpenAI:    https://api.openai.com
+# Anthropic: https://api.anthropic.com
+# llama.cpp: http://localhost:8080
+endpoint=http://localhost:11434
+
+# Model name
+# Ollama:    llama3.2, codellama, mistral, etc.
+# OpenAI:    gpt-4, gpt-3.5-turbo, etc.
+# Anthropic: claude-sonnet-4-5-20250929, etc.
+model=llama3.2
+
+# API key (required for openai and anthropic backends)
+# api_key=sk-...
+
+# Maximum tokens in response
+max_tokens=2048
+
+# Temperature (0.0 = deterministic, 1.0 = creative)
+temperature=0.3
+
+# Unix socket path for CLI <-> daemon communication
+socket_path=/run/thk/thk.sock
+
+# Kernel audit logging (1=enabled, 0=disabled)
+audit_enabled=1
+
+# Rate limit: max requests per minute per user (0=unlimited)
+rate_limit=10
+
+# Custom system prompt (optional, overrides default)
+# custom_prompt=You are a Linux expert...

@@ -26,6 +26,7 @@ fit into other categories.
    oxsemi-tornado
    pci-endpoint-test
    spear-pcie-gadget
+   thk
    tps6594-pfsm
    uacce
    xilinx_sdfec
