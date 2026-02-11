@@ -7,8 +7,15 @@
 #ifndef _UAPI_MISC_THK_H
 #define _UAPI_MISC_THK_H
 
+#ifdef __KERNEL__
 #include <linux/ioctl.h>
 #include <linux/types.h>
+#else
+#include <sys/ioctl.h>
+#include <stdint.h>
+typedef uint32_t __u32;
+typedef uint64_t __u64;
+#endif
 
 #define THK_VERSION		0x00010000	/* 1.0.0 */
 #define THK_NAME		"thk"

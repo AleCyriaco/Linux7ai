@@ -129,6 +129,7 @@ static int http_post(const char *url, const char *body,
 			 "POST %s HTTP/1.1\r\n"
 			 "Host: %s:%d\r\n"
 			 "Content-Type: application/json\r\n"
+			 "Connection: close\r\n"
 			 "Content-Length: %zu\r\n"
 			 "%s\r\n"
 			 "\r\n"
@@ -140,6 +141,7 @@ static int http_post(const char *url, const char *body,
 			 "POST %s HTTP/1.1\r\n"
 			 "Host: %s:%d\r\n"
 			 "Content-Type: application/json\r\n"
+			 "Connection: close\r\n"
 			 "Content-Length: %zu\r\n"
 			 "\r\n"
 			 "%s",
@@ -182,6 +184,50 @@ out:
 	if (fd >= 0)
 		close(fd);
 	return ret;
+}
+
+/*
+ * Extract a JSON string value by key from raw JSON.
+ * Handles escaped quotes. Writes unescaped result to out.
+ */
+static int json_extract_string(const char *json, const char *key,
+			       char *out, size_t out_len)
+{
+	char pattern[128];
+	const char *p, *start;
+	size_t off = 0;
+
+	snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+	p = strstr(json, pattern);
+	if (!p)
+		return -1;
+
+	p += strlen(pattern);
+	while (*p == ' ' || *p == ':' || *p == '\t')
+		p++;
+	if (*p != '"')
+		return -1;
+
+	start = ++p;
+	while (*p && off < out_len - 1) {
+		if (*p == '\\' && p[1]) {
+			p++;
+			switch (*p) {
+			case 'n':  out[off++] = '\n'; break;
+			case 't':  out[off++] = '\t'; break;
+			case '"':  out[off++] = '"';  break;
+			case '\\': out[off++] = '\\'; break;
+			default:   out[off++] = *p;   break;
+			}
+			p++;
+		} else if (*p == '"') {
+			break;
+		} else {
+			out[off++] = *p++;
+		}
+	}
+	out[off] = '\0';
+	return off > 0 ? 0 : -1;
 }
 
 /*
@@ -264,8 +310,22 @@ static int query_ollama(const struct thk_cfg *cfg, const char *prompt,
 
 	free(escaped);
 
-	ret = http_post(url, body, NULL, response, response_len);
+	char *raw = malloc(response_len);
+	if (!raw) {
+		free(body);
+		return -ENOMEM;
+	}
+
+	ret = http_post(url, body, NULL, raw, response_len);
 	free(body);
+
+	if (ret == 0) {
+		/* Ollama returns {"response":"...","done":true,...} */
+		if (json_extract_string(raw, "response", response,
+					response_len) < 0)
+			snprintf(response, response_len, "%s", raw);
+	}
+	free(raw);
 
 	return ret;
 }
@@ -322,8 +382,22 @@ static int query_openai(const struct thk_cfg *cfg, const char *prompt,
 
 	free(escaped);
 
-	ret = http_post(url, body, auth, response, response_len);
+	char *raw = malloc(response_len);
+	if (!raw) {
+		free(body);
+		return -ENOMEM;
+	}
+
+	ret = http_post(url, body, auth, raw, response_len);
 	free(body);
+
+	if (ret == 0) {
+		/* OpenAI returns {"choices":[{"message":{"content":"..."}}]} */
+		if (json_extract_string(raw, "content", response,
+					response_len) < 0)
+			snprintf(response, response_len, "%s", raw);
+	}
+	free(raw);
 
 	return ret;
 }
@@ -382,8 +456,22 @@ static int query_anthropic(const struct thk_cfg *cfg, const char *prompt,
 
 	free(escaped);
 
-	ret = http_post(url, body, auth, response, response_len);
+	char *raw = malloc(response_len);
+	if (!raw) {
+		free(body);
+		return -ENOMEM;
+	}
+
+	ret = http_post(url, body, auth, raw, response_len);
 	free(body);
+
+	if (ret == 0) {
+		/* Anthropic returns {"content":[{"text":"..."}]} */
+		if (json_extract_string(raw, "text", response,
+					response_len) < 0)
+			snprintf(response, response_len, "%s", raw);
+	}
+	free(raw);
 
 	return ret;
 }
@@ -438,8 +526,22 @@ static int query_llamacpp(const struct thk_cfg *cfg, const char *prompt,
 
 	free(escaped);
 
-	ret = http_post(url, body, NULL, response, response_len);
+	char *raw = malloc(response_len);
+	if (!raw) {
+		free(body);
+		return -ENOMEM;
+	}
+
+	ret = http_post(url, body, NULL, raw, response_len);
 	free(body);
+
+	if (ret == 0) {
+		/* llama.cpp returns {"content":"..."} */
+		if (json_extract_string(raw, "content", response,
+					response_len) < 0)
+			snprintf(response, response_len, "%s", raw);
+	}
+	free(raw);
 
 	return ret;
 }
